@@ -1,0 +1,50 @@
+[project]
+name = "factgridsyncwdbot"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "tholzheim", email = "tim.holzheim@rwth-aachen.de" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.10.2",
+    "rich>=13.9.4",
+    "sparqlwrapper>=2.0.0",
+    "typer>=0.13.1",
+    "wikibaseintegrator>=0.12.10",
+]
+
+[project.scripts]
+factgridsyncwdbot = "factgridsyncwdbot.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.13.0",
+    "pytest>=8.3.3",
+    "ruff>=0.8.0",
+]
+
+[tool.ruff]
+# Set the maximum line length to 79.
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+]
