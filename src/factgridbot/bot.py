@@ -8,10 +8,10 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
-from factgridsyncwdbot.factgrid import FactGrid
-from factgridsyncwdbot.models.auth import Authorization
-from factgridsyncwdbot.models.error import SyncErrorRecord
-from factgridsyncwdbot.wikidata import Wikidata
+from factgridbot.factgrid import FactGrid
+from factgridbot.models.auth import Authorization
+from factgridbot.models.error import SyncErrorRecord
+from factgridbot.wikidata import Wikidata
 
 logger = logging.getLogger(__name__)
 

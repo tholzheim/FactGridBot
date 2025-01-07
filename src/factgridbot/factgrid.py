@@ -1,7 +1,9 @@
 from string import Template
 
-from factgridsyncwdbot.models.auth import WikibaseAuthorizationConfig
-from factgridsyncwdbot.wikibase import Wikibase
+from wikibaseintegrator.entities import ItemEntity
+
+from factgridbot.models.auth import WikibaseAuthorizationConfig
+from factgridbot.wikibase import Wikibase
 
 
 class FactGrid(Wikibase):

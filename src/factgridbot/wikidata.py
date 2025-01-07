@@ -5,8 +5,8 @@ from wikibaseintegrator import datatypes
 from wikibaseintegrator.entities import ItemEntity, PropertyEntity
 from wikibaseintegrator.models import Reference, References
 
-from factgridsyncwdbot.models.auth import WikibaseAuthorizationConfig
-from factgridsyncwdbot.wikibase import Wikibase
+from factgridbot.models.auth import WikibaseAuthorizationConfig
+from factgridbot.wikibase import Wikibase
 
 logger = logging.getLogger(__name__)
 

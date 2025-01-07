@@ -9,8 +9,8 @@ from rich.logging import RichHandler
 from rich.progress import Progress
 from rich.table import Table
 
-from factgridsyncwdbot.bot import Bot
-from factgridsyncwdbot.models.auth import (
+from factgridbot.bot import Bot
+from factgridbot.models.auth import (
     Authorization,
     WikibaseAuthorizationConfig,
     WikibaseBotAuth,
@@ -19,7 +19,7 @@ from factgridsyncwdbot.models.auth import (
     WikibaseOauth2,
     WikibaseUserAuth,
 )
-from factgridsyncwdbot.models.error import SyncErrorRecord
+from factgridbot.models.error import SyncErrorRecord
 
 app = typer.Typer()
 factgrid_add_app = typer.Typer()

@@ -1,12 +1,26 @@
 [project]
-name = "factgridsyncwdbot"
+name = "FactGridBot"
 version = "0.1.0"
-description = "Add your description here"
+description = "A specialized Wikibase bot designed to synchronize and manage data between Wikidata and FactGrid."
 readme = "README.md"
+license= "Apache-2.0"
 authors = [
     { name = "tholzheim", email = "tim.holzheim@rwth-aachen.de" }
 ]
 requires-python = ">=3.10"
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+
 dependencies = [
     "pydantic>=2.10.2",
     "rich>=13.9.4",
@@ -16,7 +30,7 @@ dependencies = [
 ]
 
 [project.scripts]
-factgridsyncwdbot = "factgridsyncwdbot.cli:app"
+factgridbot = "factgridbot.cli:app"
 
 [build-system]
 requires = ["hatchling"]
@@ -27,14 +41,16 @@ dev = [
     "mypy>=1.13.0",
     "pytest>=8.3.3",
     "ruff>=0.8.0",
+    "tox>=4.23.2",
 ]
 
 [tool.ruff]
-# Set the maximum line length to 79.
 line-length = 120
-
-[tool.ruff.lint]
-select = [
+format.preview = true
+format.docstring-code-line-length = 100
+format.docstring-code-format = true
+lint.select = [
+  "ALL",
     # pycodestyle
     "E",
     # Pyflakes
@@ -48,3 +64,5 @@ select = [
     # isort
     "I",
 ]
+
+

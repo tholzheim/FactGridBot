@@ -10,7 +10,7 @@ from wikibaseintegrator import WikibaseIntegrator, wbi_login
 from wikibaseintegrator.entities import ItemEntity, PropertyEntity
 from wikibaseintegrator.models import Snak
 
-from factgridsyncwdbot.models.auth import WikibaseAuthorizationConfig, WikibaseLoginTypes
+from factgridbot.models.auth import WikibaseAuthorizationConfig, WikibaseLoginTypes
 
 logger = logging.getLogger(__name__)
 

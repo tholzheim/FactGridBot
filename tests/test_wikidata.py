@@ -1,12 +1,10 @@
 import unittest
 
-from factgridsyncwdbot.wikidata import Wikidata
+from factgridbot.wikidata import Wikidata
 
 
 class TestWikidata(unittest.TestCase):
-    """
-    test Wikidata class
-    """
+    """test Wikidata class"""
 
     def test_add_factgrid_id(self):
         wikidata = Wikidata()

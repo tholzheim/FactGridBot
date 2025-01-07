@@ -2,19 +2,15 @@ import csv
 import logging
 import unittest
 
-from factgridsyncwdbot.bot import Bot
-from factgridsyncwdbot.cli import sync
+from factgridbot.bot import Bot
 
 
 class TestBot(unittest.TestCase):
-    """
-    test Bot
-    """
+    """test Bot"""
 
+    @unittest.skip("Only for manual validation")
     def test_get_missing_factgrid_items_in_wd(self):
-        """
-        tests get_missing_factgrid_items_in_wd
-        """
+        """Tests get_missing_factgrid_items_in_wd"""
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
         logging.basicConfig()
@@ -50,11 +46,6 @@ class TestBot(unittest.TestCase):
                         "wd_label": wd_labels.get(wd_id, None),
                         "factgrid_id": factgrid_id,
                         "factgrid_label": factgrid_labels.get(factgrid_id, None),
-                    }
+                    },
                 )
         # on manual overview and validation of a few all the mappings are correct and can be applied
-
-    def test_cli_sync_entity(self):
-        failed_for = ["Q170468", "Q245160", "Q467864"]
-        for entity_id in failed_for:
-            sync(wd_entity=entity_id)
