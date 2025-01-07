@@ -39,6 +39,7 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "mypy>=1.13.0",
+    "pytest-cov>=6.0.0",
     "pytest>=8.3.3",
     "ruff>=0.8.0",
     "tox>=4.23.2",
@@ -63,5 +64,10 @@ lint.select = [
     # isort
     "I",
 ]
+
+[tool.mypy]
+follow_imports = "skip"
+strict_optional = true
+ignore_missing_imports = true
 
 
