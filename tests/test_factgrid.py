@@ -1,12 +1,15 @@
 import datetime
 import unittest
+from unittest import skipIf
 
 from factgridbot.factgrid import FactGrid
+from tests.basetest import IN_GITHUB_ACTIONS
 
 
 class TestFactGrid(unittest.TestCase):
     """tests FactGrid"""
 
+    @skipIf(IN_GITHUB_ACTIONS, "Expensive query")
     def test_get_all_referenced_wikidata_items(self):
         """Tests get_all_referenced_wikidata_items"""
         factgrid = FactGrid()
