@@ -1,11 +1,14 @@
 import unittest
+from unittest import skipIf
 
 from factgridbot.wikidata import Wikidata
+from tests.basetest import IN_GITHUB_ACTIONS
 
 
 class TestWikidata(unittest.TestCase):
     """test Wikidata class"""
 
+    @skipIf(IN_GITHUB_ACTIONS, "Test queries Wikidata")
     def test_add_factgrid_id(self):
         """
         Test adding factgrid id
