@@ -86,7 +86,7 @@ class Wikidata(Wikibase):
                     logger.info(f"FactGrid property {property_id} has no value for entity {entity.id}")
                 else:
                     logger.debug(
-                        f"Wikidata entity {entity.id} is linked to a different FactGrid entity {value} != {factgrid_id}",
+                        f"Wikidata entity {entity.id} is linked to a different FactGrid entity {value} != {factgrid_id}",  # noqa: E501
                     )
         else:
             references = References()

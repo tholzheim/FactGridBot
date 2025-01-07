@@ -50,7 +50,6 @@ format.preview = true
 format.docstring-code-line-length = 100
 format.docstring-code-format = true
 lint.select = [
-  "ALL",
     # pycodestyle
     "E",
     # Pyflakes

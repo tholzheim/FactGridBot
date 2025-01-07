@@ -16,7 +16,8 @@ class PropertyMapping(BaseModel):
     wikidata: WikibaseProperty
 
     def have_same_datatype(self) -> bool:
-        if self.factgrid.property_type == self.wikidata.property_type:
-            return True
-        else:
-            return False
+        """
+        Check if property has same datatype
+        :return:
+        """
+        return self.factgrid.property_type == self.wikidata.property_type

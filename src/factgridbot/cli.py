@@ -52,7 +52,7 @@ def sync(
     date: Annotated[
         str | None,
         typer.Option(
-            help="Sync all entities that were modified at given date. Use iso-format to specify a date or 'today' or 'yesterday'",
+            help="Sync all entities that were modified at given date. Use iso-format to specify a date or 'today' or 'yesterday'",  # noqa: E501
         ),
     ] = None,
     dry_run: Annotated[
@@ -62,11 +62,14 @@ def sync(
     fix_known_issues: Annotated[
         bool,
         typer.Option(
-            help="Fix known entity issues to avoid mediawiki api errors. Fixes errors such as missing coordinate precision",
+            help="Fix known entity issues to avoid mediawiki api errors. Fixes errors such as missing coordinate precision",  # noqa: E501
         ),
     ] = False,
 ):
-    """Sync Wikidata back references with FactGrid. Adds the FactGrid Qid to Items that are in FactGrid and linked to Wikidata"""
+    """
+    Sync Wikidata back references with FactGrid.
+    Adds the FactGrid Qid to Items that are in FactGrid and linked to Wikidata
+    """
     bot = Bot(Bot.load_auth())
     mappings = []
     if factgrid_entity:
@@ -85,8 +88,8 @@ def sync(
         else:
             try:
                 start_date = datetime.datetime.fromisoformat(date)
-            except ValueError:
-                raise typer.Abort()
+            except ValueError as ex:
+                raise typer.Abort() from ex
         mappings = bot.get_missing_wd_to_factgrid_item_reference_for(start_date)
     elif all:
         console.print("Starting sync for all missing entities")
@@ -107,7 +110,7 @@ def sync(
             if failed_syncs:
                 console.print(SyncErrorRecord.convert_list_to_table(failed_syncs))
                 console.print(
-                    f"During the sync {len(failed_syncs)} items failed sync with Wikidata due to the errors listed in the table above",
+                    f"During the sync {len(failed_syncs)} items failed sync with Wikidata due to the errors listed in the table above",  # noqa: E501
                 )
                 console.print(
                     "Try to run the sync with the option --fix-known-issues this can reduce the number of errors",
@@ -160,11 +163,11 @@ def family_names(force: Annotated[bool, typer.Option(help="If not set the change
         if len(factgrid_ids) == 1 or len(wd_ids) == 1
     ]
     # TODO add option to show errors
-    mappings_with_errors = [
-        (family_name, wd_ids, factgrid_ids)
-        for family_name, wd_ids, factgrid_ids in label_mappings
-        if len(factgrid_ids) > 1 or len(wd_ids) > 1
-    ]
+    # mappings_with_errors = [
+    #     (family_name, wd_ids, factgrid_ids)
+    #     for family_name, wd_ids, factgrid_ids in label_mappings
+    #     if len(factgrid_ids) > 1 or len(wd_ids) > 1
+    # ]
     console.print(
         f"{len(valid_mappings)} family names can be added to FactGrid. (have no collision with multiple entries)",
     )
@@ -184,7 +187,7 @@ def family_names(force: Annotated[bool, typer.Option(help="If not set the change
                 show_mapping_table(fails)
                 console.print(f"Failed to add Wikidata ID for {len(fails)} FactGrid entities.")
                 console.print(
-                    "Common issue is that the Wikidata ID is already used by another FactGrid entity most likely a given name which links to a family name. ",
+                    "Common issue is that the Wikidata ID is already used by another FactGrid entity most likely a given name which links to a family name. ",  # noqa: E501
                 )
 
 

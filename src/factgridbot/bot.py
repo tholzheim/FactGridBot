@@ -239,12 +239,16 @@ class Bot:
         wikidata_entity_class_id: str,
         language: str = "en",
     ) -> list[tuple[str, list[str], list[str]]]:
-        """Get the entities from wikidata and factGrid that share the same label given the corresponding entity class
+        """Get the entities from Wikidata and FactGrid that share the same label given the corresponding entity class
         Only FactGrid entities with missing wikidata id are included
         :param factgrid_entity_class_id: id of the entity class in FactGrid
         :param wikidata_entity_class_id: id of the entity class in Wikidata
         :param language: language of the label to match
-        :return: List of tuples. Each tuple that the label, list of FactGrid entities with the label and list of Wikidata entities with the label
+        :return: List of tuples.
+            Each tuple contains:
+                the label,
+                list of FactGrid entities with the label and,
+                list of Wikidata entities with the label
         """
         if language is None:
             language = "en"
