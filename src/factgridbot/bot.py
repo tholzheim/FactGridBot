@@ -166,7 +166,7 @@ class Bot:
     def sync_wd_with_factgrid_ids(
         self,
         mappings: list[tuple[str, str]],
-        progress_callback: Callable[[None], None],
+        progress_callback: Callable[[None], None] | None = None,
         fix_known_issues: bool = False,
         max_retries: int | None = None,
     ) -> list[SyncErrorRecord]:
@@ -190,7 +190,7 @@ class Bot:
                 )
                 futures.append(future)
                 if progress_callback:
-                    future.add_done_callback(progress_callback)
+                    future.add_done_callback(progress_callback)  # type: ignore
             for future in as_completed(futures):
                 result = future.result()
                 if isinstance(result, SyncErrorRecord):
@@ -283,7 +283,7 @@ class Bot:
     def add_wikidata_id_to_factgrid_family_name(
         self,
         label_mappings: list[tuple[str, str, str]],
-        progress_callback: Callable[[], None],
+        progress_callback: Callable[[], None] | None = None,
     ):
         """Add missing family names to FactGrid"""
         fails = []

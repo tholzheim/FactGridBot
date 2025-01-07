@@ -37,7 +37,7 @@ def check(
     types: Annotated[bool, typer.Option(help="Check for property type mismatches")] = True,
     mapping: Annotated[bool, typer.Option(help="Check if mappings are a 1:1 mapping")] = True,
 ):
-    bot = Bot()
+    bot = Bot(Bot.load_auth())
     if types:
         bot.check_property_type_mappings()
     if mapping:

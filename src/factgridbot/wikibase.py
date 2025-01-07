@@ -286,7 +286,7 @@ class Wikibase(BaseModel):
             end_date = start_date + timedelta(days=1)
         query = query_template.substitute(start_date=start_date.isoformat(), end_date=end_date.isoformat())
         lod = self.execute_query(query, self.sparql_endpoint)
-        return {d.get("item") for d in lod}
+        return {d.get("item", "") for d in lod if isinstance(d.get("item"), str)}
 
     def _fix_known_entity_issues(self, entity: ItemEntity | PropertyEntity):
         """Fix known issues with entities that lead to a denial of the mediawiki api

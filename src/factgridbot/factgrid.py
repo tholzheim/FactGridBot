@@ -29,7 +29,7 @@ class FactGrid(Wikibase):
         }
         """
         lod = self.execute_query(query, endpoint_url=self.sparql_endpoint)
-        property_ids: set[str] = {d.get("property") for d in lod if isinstance(d.get("property"), str)}
+        property_ids: set[str] = {d.get("property", "") for d in lod if isinstance(d.get("property"), str)}
         return property_ids
 
     def get_prop_mapping_factgrid_to_wikidata(self) -> dict[str, list[str]]:
@@ -43,7 +43,11 @@ class FactGrid(Wikibase):
         GROUP BY ?factgrid_prop
         """
         lod = self.execute_query(query, endpoint_url=self.sparql_endpoint)
-        mapping = {d.get("factgrid_prop"): d.get("ids").split("|") for d in lod}
+        mapping = {
+            d.get("factgrid_prop", ""): d.get("ids", "").split("|")
+            for d in lod
+            if isinstance(d.get("factgrid_prop"), str) and isinstance(d.get("ids"), str)
+        }
         return mapping
 
     def get_prop_mapping_wikidata_to_factgrid(self) -> dict[str, list[str]]:
@@ -59,7 +63,11 @@ class FactGrid(Wikibase):
         GROUP BY ?wd_prop
         """
         lod = self.execute_query(query, endpoint_url=self.sparql_endpoint)
-        mapping = {d.get("wd_prop"): d.get("ids").split("|") for d in lod}
+        mapping = {
+            d.get("wd_prop", ""): d.get("ids", "").split("|")
+            for d in lod
+            if isinstance(d.get("wd_prop"), str) and isinstance(d.get("ids"), str)
+        }
         return mapping
 
     def get_prop_mappings(self) -> list[tuple[str, str]]:
@@ -72,7 +80,11 @@ class FactGrid(Wikibase):
         }
         """
         lod = self.execute_query(query, endpoint_url=self.sparql_endpoint)
-        return [(d.get("wd_prop"), d.get("factgrid_prop")) for d in lod]
+        return [
+            (d.get("wd_prop", ""), d.get("factgrid_prop", ""))
+            for d in lod
+            if isinstance(d.get("wd_prop"), str) and isinstance(d.get("factgrid_prop"), str)
+        ]
 
     def get_item_mapping_for(self, wd_item_ids: set[str]) -> list[tuple[str, str]]:
         """Get mapping from wikidata to factgrid item
@@ -134,7 +146,7 @@ class FactGrid(Wikibase):
         WHERE { ?wd_qid schema:isPartOf <https://www.wikidata.org/>. }
         """
         lod = self.execute_query(query, endpoint_url=self.sparql_endpoint)
-        return {d.get("wd_qid") for d in lod}
+        return {d.get("wd_qid", "") for d in lod if isinstance(d.get("wd_qid"), str)}
 
     def get_wikidata_entity_id_from_sitelink(self, sitelink_url: str) -> str:
         """Get wikidata entity id from sitelink
@@ -173,7 +185,7 @@ class FactGrid(Wikibase):
             query=query,
             endpoint_url=self.sparql_endpoint,
         )
-        return {d.get("item") for d in lod}
+        return {d.get("item", "") for d in lod if isinstance(d.get("item", None), str)}
 
     def add_wikidata_id_to(self, factgrid_entity: ItemEntity, wikidata_entity_id: str):
         """Add wikidata id as sitelink to the given FactGrid entity id
