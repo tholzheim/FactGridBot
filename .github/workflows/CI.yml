@@ -57,7 +57,7 @@ jobs:
       - name: Check code formatting with Ruff
         uses: astral-sh/ruff-action@v3
         with:
-          args: format --output-format=github
+          args: format --check
   type:
     runs-on: ubuntu-latest
     steps:
