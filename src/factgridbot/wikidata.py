@@ -12,9 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class Wikidata(Wikibase):
-    """
-    Wikidata Wikibase instance
-    """
+    """Wikidata Wikibase instance"""
 
     FACTGRID_ITEM_ID: str = "P8168"
     FACTGRID_PROPERTY_ID: str = "P10787"
@@ -30,8 +28,7 @@ class Wikidata(Wikibase):
         )
 
     def retrieve_missing_factgrid_reference(self, item_ids: set[str]) -> set[str]:
-        """
-        Retrieve the wikidata item IDs for which the factGrid link ( FactGrid item ID (P8168) ) is missing
+        """Retrieve the wikidata item IDs for which the factGrid link ( FactGrid item ID (P8168) ) is missing
         :param item_ids:
         :return:
         """
@@ -56,8 +53,7 @@ class Wikidata(Wikibase):
         return {d.get("wd_id") for d in lod}
 
     def add_factgrid_id(self, entity: ItemEntity | PropertyEntity, factgrid_id: str):
-        """
-        add the given FactGrid ID to the wikidata item
+        """Add the given FactGrid ID to the wikidata item
         if the factgrid id already exists do nothing
         if a different factgrid id exists raise an error
         :param entity:
@@ -90,7 +86,7 @@ class Wikidata(Wikibase):
                     logger.info(f"FactGrid property {property_id} has no value for entity {entity.id}")
                 else:
                     logger.debug(
-                        f"Wikidata entity {entity.id} is linked to a different FactGrid entity {value} != {factgrid_id}"
+                        f"Wikidata entity {entity.id} is linked to a different FactGrid entity {value} != {factgrid_id}",
                     )
         else:
             references = References()
@@ -100,3 +96,35 @@ class Wikidata(Wikibase):
             references.add(reference)
             new_claim = datatypes.ExternalID(prop_nr=property_id, value=factgrid_id, references=references)
             entity.add_claims(new_claim)
+
+    def get_entities_by_labels(self, labels: set[str], language: str, entity_class_id: str) -> list[tuple[str, str]]:
+        """Get entity that have on of the labels of the given set
+        :param language:
+        :param entity_class_id:
+        :param labels:
+        :return:
+        """
+        query_template = Template("""
+        SELECT DISTINCT ?item ?label
+        WHERE{
+            VALUES ?label{
+                $labels
+            }
+            ?item rdfs:label ?label.
+            ?item wdt:P31 wd:$entity_class_id
+        }
+        """)
+        query = Template(query_template.safe_substitute(entity_class_id=self.get_entity_id(entity_class_id)))
+        string_template = Template('"$class_id"@$lang')
+        values = [
+            string_template.safe_substitute(class_id=entity_class_id.replace('"', r"\""), lang=language)
+            for entity_class_id in labels
+        ]
+        lod = self.execute_values_query_in_chunks(
+            query_template=query,
+            param_name="labels",
+            values=values,
+            endpoint_url=self.sparql_endpoint,
+            chunk_size=3000,
+        )
+        return [(d.get("item"), d.get("label")) for d in lod]

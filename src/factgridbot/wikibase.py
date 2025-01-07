@@ -16,16 +16,12 @@ logger = logging.getLogger(__name__)
 
 
 def get_default_user_agent() -> str:
-    """
-    Get default user agent
-    """
-    return "FactGridSyncWdBot"
+    """Get default user agent"""
+    return f"FactGridSyncWdBot 1.0 ({date.today()})"
 
 
 class Wikibase(BaseModel):
-    """
-    Wikibase server
-    """
+    """Wikibase server"""
 
     sparql_endpoint: HttpUrl
     website: HttpUrl
@@ -49,8 +45,7 @@ class Wikibase(BaseModel):
         endpoint_url: HttpUrl,
         chunk_size: int = 1000,
     ):
-        """
-        Execute given query in chunks to speedup execution
+        """Execute given query in chunks to speedup execution
         :param chunk_size:
         :param endpoint_url:
         :param query_template:
@@ -78,8 +73,7 @@ class Wikibase(BaseModel):
 
     @classmethod
     def execute_query(cls, query: str, endpoint_url: HttpUrl) -> list[dict]:
-        """
-        Execute given query against given endpoint
+        """Execute given query against given endpoint
         :param query:
         :param endpoint_url:
         :return:
@@ -98,8 +92,8 @@ class Wikibase(BaseModel):
         resp = sparql.query().convert()
         lod_raw = resp.get("results", {}).get("bindings")
         logger.debug(
-            f"Query ({query_hash}) execution finished! execution time : {(datetime.now() - start).total_seconds()}s, No. results: {len(lod_raw)}"  # noqa: E501
-        )  # noqa: E501
+            f"Query ({query_hash}) execution finished! execution time : {(datetime.now() - start).total_seconds()}s, No. results: {len(lod_raw)}",  # noqa: E501
+        )
         lod = []
         for d_raw in lod_raw:
             d = {key: record.get("value", None) for key, record in d_raw.items()}
@@ -108,8 +102,7 @@ class Wikibase(BaseModel):
         return lod
 
     def get_property_types_of(self, prop_ids: set[str]) -> dict[str, str]:
-        """
-        Get the property types for the given properties
+        """Get the property types for the given properties
         :param prop_ids:
         :return:
         """
@@ -142,8 +135,7 @@ class Wikibase(BaseModel):
         entity_ids: list[str],
         language: str | None = None,
     ) -> dict[str, str]:
-        """
-        Get the labels for the given entities
+        """Get the labels for the given entities
         :param endpoint_url:
         :param entity_ids:
         :param language: if None english will be used
@@ -173,11 +165,10 @@ class Wikibase(BaseModel):
         return {d.get("qid"): d.get("label") for d in lod}
 
     def get_wbi_login(self) -> wbi_login._Login:
-        """
-        Get WikibaseIntegrator login
+        """Get WikibaseIntegrator login
         :return:
         """
-        # ToDo: add mediawiki_rest_api to all logins
+        # TODO: add mediawiki_rest_api to all logins
         if self.auth_config is None:
             return None
         match self.auth_config.auth_type:
@@ -185,6 +176,7 @@ class Wikibase(BaseModel):
                 return wbi_login.OAuth2(
                     consumer_token=self.auth_config.consumer_token,
                     consumer_secret=self.auth_config.consumer_secret,
+                    mediawiki_api_url=self.mediawiki_api_url.unicode_string(),
                 )
             case WikibaseLoginTypes.OAUTH1:
                 return wbi_login.OAuth1(
@@ -192,24 +184,27 @@ class Wikibase(BaseModel):
                     consumer_secret=self.auth_config.consumer_secret,
                     access_token=self.auth_config.access_token,
                     access_secret=self.auth_config.access_secret,
+                    mediawiki_api_url=self.mediawiki_api_url.unicode_string(),
                 )
             case WikibaseLoginTypes.BOT:
                 return wbi_login.Login(
                     user=self.auth_config.user,
                     password=self.auth_config.password,
+                    mediawiki_api_url=self.mediawiki_api_url.unicode_string(),
+                    token_renew_period=60,
                 )
             case WikibaseLoginTypes.USER:
                 return wbi_login.Clientlogin(
                     user=self.auth_config.user,
                     password=self.auth_config.password,
+                    mediawiki_api_url=self.mediawiki_api_url.unicode_string(),
                 )
             case _:
                 return None
 
     @property
     def wbi(self) -> WikibaseIntegrator:
-        """
-        Get wbi instance for this wikibase instance
+        """Get wbi instance for this wikibase instance
         :return:
         """
         if not hasattr(self, "_wbi"):
@@ -219,13 +214,16 @@ class Wikibase(BaseModel):
         return self._wbi
 
     def get_item(self, qid: str) -> ItemEntity:
-        """
-        Get wikibase item by id
+        """Get wikibase item by id
         :param qid: Qid of the item
         :return:
         """
-        qid = qid.removeprefix(self.item_prefix.unicode_string())
-        return self.wbi.item.get(qid, mediawiki_api_url=self.mediawiki_api_url, user_agent=get_default_user_agent())
+        qid = self.get_entity_id(qid)
+        return self.wbi.item.get(
+            qid,
+            mediawiki_api_url=self.mediawiki_api_url.unicode_string(),
+            user_agent=get_default_user_agent(),
+        )
 
     def write_item(
         self,
@@ -233,14 +231,20 @@ class Wikibase(BaseModel):
         summary: str | None = None,
         tags: list[str] | None = None,
         fix_known_issues: bool = False,
+        max_retries: int | None = None,
     ) -> ItemEntity | None:
-        """
-        write the given item to the wikibase instance
+        """Write the given item to the wikibase instance
+        :param max_retries:
+        :param fix_known_issues:
         :param item: item to write
         :param summary: summary of the changes
         :param tags: tags to add to the edit
         :return:
+        ToDo: add max retry for scheduled runs it needs to be low
         """
+        kwargs = dict()
+        if max_retries is not None:
+            kwargs["max_retries"] = max_retries
         try:
             if fix_known_issues:
                 self._fix_known_entity_issues(item)
@@ -250,6 +254,7 @@ class Wikibase(BaseModel):
                 tags=tags,
                 login=self.wbi.login,
                 user_agent=get_default_user_agent(),
+                **kwargs,
             )
         except Exception as e:
             logger.error(f"Failed to write item {item.id}: {e}")
@@ -257,16 +262,14 @@ class Wikibase(BaseModel):
         return res
 
     def get_entity_id(self, entity_url: str) -> str:
-        """
-        Get the ID of the given entity url without the namespace prefix
+        """Get the ID of the given entity url without the namespace prefix
         :param entity_url:
         :return:
         """
         return entity_url.removeprefix(self.item_prefix.unicode_string())
 
     def get_items_modified_at(self, start_date: datetime | date, end_date: datetime | date | None = None) -> set[str]:
-        """
-        Get items modified at a date range
+        """Get items modified at a date range
         :param start_date:
         :param end_date:
         :return:
@@ -286,8 +289,7 @@ class Wikibase(BaseModel):
         return {d.get("item") for d in lod}
 
     def _fix_known_entity_issues(self, entity: ItemEntity | PropertyEntity):
-        """
-        Fix known issues with entities that lead to a denial of the mediawiki api
+        """Fix known issues with entities that lead to a denial of the mediawiki api
         Errors that are fixed
         - coordinate precision not set
         :param entity:
@@ -302,11 +304,19 @@ class Wikibase(BaseModel):
                     self._fix_snak(snak)
 
     def _fix_snak(self, snak: Snak):
-        """
-        fix known issues of snaks
+        """Fix known issues of snaks
         :param snak:
         :return:
         """
         if snak.datatype == "globe-coordinate" and snak.datavalue.get("value", {}).get("precision") is None:
             # https://github.com/wikimedia/Wikibase/blob/174450de8fdeabcf97287604dbbf04d07bb5000c/repo/includes/Rdf/Values/GlobeCoordinateRdfBuilder.php#L120
             snak.datavalue["value"]["precision"] = 1 / 3600
+
+    def normalize_entity_id(self, entity_id: str) -> str:
+        """Normalize entity id to a url
+        :param entity_id: id to normalize
+        :return:
+        """
+        if entity_id.startswith(self.item_prefix.unicode_string()):
+            return entity_id
+        return f"{self.item_prefix.unicode_string()}:{entity_id}"

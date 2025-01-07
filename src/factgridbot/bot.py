@@ -1,5 +1,6 @@
 import datetime
 import logging
+from collections import defaultdict
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -16,16 +17,12 @@ logger = logging.getLogger(__name__)
 
 
 class Bot:
-    """
-    Wikibase Bot
-    """
+    """Wikibase Bot"""
 
     AUTH_STORAGE = Path.home() / ".config" / "WikibaseMigrator" / "bot" / "bot_auth.json"
 
     def __init__(self, auth: Authorization):
-        """
-        constructor
-        """
+        """constructor"""
         self.auth = auth
         self.factgrid = FactGrid(auth_config=self.auth.factgrid)
         self.wikidata = Wikidata(auth_config=self.auth.wikidata)
@@ -33,9 +30,7 @@ class Bot:
 
     @classmethod
     def load_auth(cls) -> Authorization:
-        """
-        Load authorization config from file
-        """
+        """Load authorization config from file"""
         if cls.AUTH_STORAGE.exists():
             logger.info(f"Loading auth config from {cls.AUTH_STORAGE}")
             auth = Authorization.model_validate_json(cls.AUTH_STORAGE.read_text())
@@ -46,23 +41,17 @@ class Bot:
 
     @classmethod
     def store_auth(cls, auth: Authorization) -> None:
-        """
-        Store authorization config in file
-        """
+        """Store authorization config in file"""
         cls.AUTH_STORAGE.parent.mkdir(exist_ok=True, parents=True)
         cls.AUTH_STORAGE.write_text(auth.model_dump_json(indent=2))
 
     def validate_property_mappings(self):
-        """
-        Validate the property mappings
-        """
+        """Validate the property mappings"""
         self.check_duplicates_property_mappings()
         self.check_property_type_mappings()
 
     def check_duplicates_property_mappings(self):
-        """
-        Check if duplicate property mappings exist and if so print them to the console
-        """
+        """Check if duplicate property mappings exist and if so print them to the console"""
         factgrid_to_wd = self.factgrid.get_prop_mapping_factgrid_to_wikidata()
         wd_to_factgrid = self.factgrid.get_prop_mapping_wikidata_to_factgrid()
         factgrid_to_wd_table = Table(
@@ -101,14 +90,13 @@ class Bot:
                         [
                             self._get_rich_url(factgrid_prop, factgrid_labels.get(factgrid_prop))
                             for factgrid_prop in factgrid_props
-                        ]
+                        ],
                     ),
                 )
         self.console.print(wd_to_factgrid_table)
 
     def _get_rich_url(self, entity_url: str, label: str) -> str:
-        """
-        Get rich url str
+        """Get rich url str
         :param entity_url:
         :param label:
         :return:
@@ -142,8 +130,7 @@ class Bot:
         self.console.print(table)
 
     def get_all_missing_factgrid_items_in_wd(self) -> list[tuple[str, str]]:
-        """
-        Get all the wikidata items that are linked in FactGrid but not in Wikidata
+        """Get all the wikidata items that are linked in FactGrid but not in Wikidata
         :return: List of tuples. first tuple item is the wikidata item second is the corresponding factgrid id
         """
         logger.info("Query all Wikidata item references in FactGrid")
@@ -158,10 +145,10 @@ class Bot:
         return missing_wd_ref_mapping
 
     def get_missing_wd_to_factgrid_item_reference_for(
-        self, date: datetime.date | datetime.datetime
+        self,
+        date: datetime.date | datetime.datetime,
     ) -> list[tuple[str, str]]:
-        """
-        Get misssing Wikidata item references for the items that were modified on the given date
+        """Get misssing Wikidata item references for the items that were modified on the given date
         :param date:
         :return:
         """
@@ -177,10 +164,13 @@ class Bot:
         return [(wd_id, factgrid_id) for wd_id, factgrid_id in wd_to_factgrid_map if wd_id in wd_missing_ref]
 
     def sync_wd_with_factgrid_ids(
-        self, mappings: list[tuple[str, str]], progress_callback: Callable[[None], None], fix_known_issues: bool = False
+        self,
+        mappings: list[tuple[str, str]],
+        progress_callback: Callable[[None], None],
+        fix_known_issues: bool = False,
+        max_retries: int | None = None,
     ) -> list[SyncErrorRecord]:
-        """
-        sync Wikidata with FactGrid by adding the FactGrid ids to the corresponding Wikidata entities
+        """Sync Wikidata with FactGrid by adding the FactGrid ids to the corresponding Wikidata entities
         :param fix_known_issues:
         :param progress_callback:
         :param mappings:
@@ -196,6 +186,7 @@ class Bot:
                     wd_id=wd_id,
                     factgrid_id=factgrid_id,
                     fix_known_issues=fix_known_issues,
+                    max_retries=max_retries,
                 )
                 futures.append(future)
                 if progress_callback:
@@ -211,11 +202,13 @@ class Bot:
         return failed
 
     def _sync_wd_with_factgrid_id(
-        self, wd_id: str, factgrid_id: str, fix_known_issues: bool = False
+        self,
+        wd_id: str,
+        factgrid_id: str,
+        fix_known_issues: bool = False,
+        max_retries: int | None = None,
     ) -> SyncErrorRecord | None:
-        """
-
-        :param wd_id:
+        """:param wd_id:
         :param factgrid_id:
         :return:
         """
@@ -230,12 +223,75 @@ class Bot:
             wd_item = self.wikidata.get_item(wd_id)
             self.wikidata.add_factgrid_id(wd_item, self.factgrid.get_entity_id(factgrid_id))
             try:
-                self.wikidata.write_item(wd_item, summary="adds FactGrid ID", fix_known_issues=fix_known_issues)
+                self.wikidata.write_item(
+                    wd_item,
+                    summary="adds FactGrid ID",
+                    fix_known_issues=fix_known_issues,
+                    max_retries=max_retries,
+                )
             except Exception as ex:
                 result = SyncErrorRecord(wd_id=wd_id, factgrid_id=factgrid_id, error_message=str(ex))
         return result
 
+    def get_label_matches_by_entity_class(
+        self,
+        factgrid_entity_class_id: str,
+        wikidata_entity_class_id: str,
+        language: str = "en",
+    ) -> list[tuple[str, list[str], list[str]]]:
+        """Get the entities from wikidata and factGrid that share the same label given the corresponding entity class
+        Only FactGrid entities with missing wikidata id are included
+        :param factgrid_entity_class_id: id of the entity class in FactGrid
+        :param wikidata_entity_class_id: id of the entity class in Wikidata
+        :param language: language of the label to match
+        :return: List of tuples. Each tuple that the label, list of FactGrid entities with the label and list of Wikidata entities with the label
+        """
+        if language is None:
+            language = "en"
+        factgrid_ids = self.factgrid.get_entities_with_missing_wikidata_id(
+            entity_class_id=factgrid_entity_class_id,
+        )  # Family Name
+        factgrid_family_labels_map = self.factgrid.get_entity_label(entity_ids=list(factgrid_ids), language=language)
+        wikidata_family_labels_map = self.wikidata.get_entities_by_labels(
+            language=language,
+            labels=set(factgrid_family_labels_map.values()),
+            entity_class_id=wikidata_entity_class_id,
+        )
+        label_to_fact_grid = defaultdict(list)
+        for qid, label in factgrid_family_labels_map.items():
+            label_to_fact_grid[label].append(qid)
+        label_to_wd = defaultdict(list)
+        for wd_id, label in wikidata_family_labels_map:
+            label_to_wd[label].append(wd_id)
+        result = []
+        for label, wd_ids in label_to_wd.items():
+            fact_grid_ids = label_to_fact_grid.get(label, [])
+            if fact_grid_ids:
+                result.append((label, wd_ids, fact_grid_ids))
+        return result
 
-if __name__ == "__main__":
-    bot = Bot()
-    bot.check_property_type_mappings()
+    def get_missing_family_name_mappings(self) -> list[tuple[str, list[str], list[str]]]:
+        """Get mappings from label to FactGrid and Wikidata ids
+        :return:
+        """
+        return self.get_label_matches_by_entity_class("Q24499", "Q101352", "en")
+
+    def add_wikidata_id_to_factgrid_family_name(
+        self,
+        label_mappings: list[tuple[str, str, str]],
+        progress_callback: Callable[[], None],
+    ):
+        """Add missing family names to FactGrid"""
+        fails = []
+        for label, wikidata_id, factgrid_id in label_mappings:
+            try:
+                fact_grid_item = self.factgrid.get_item(factgrid_id)
+                self.factgrid.add_wikidata_id_to(fact_grid_item, self.wikidata.get_entity_id(wikidata_id))
+                self.factgrid.write_item(fact_grid_item, summary="adds Wikidata ID")
+                logger.info(f"Added {wikidata_id} to {factgrid_id}")
+            except Exception as ex:
+                logger.error(f"Failed to add Wikidata id {wikidata_id} to FactGrid entity {factgrid_id}: {ex}")
+                fails.append((label, factgrid_id, wikidata_id))
+            if progress_callback:
+                progress_callback()
+        return fails

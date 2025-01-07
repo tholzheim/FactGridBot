@@ -7,6 +7,7 @@ import typer
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.progress import Progress
+from rich.table import Table
 
 from factgridsyncwdbot.bot import Bot
 from factgridsyncwdbot.models.auth import (
@@ -21,6 +22,9 @@ from factgridsyncwdbot.models.auth import (
 from factgridsyncwdbot.models.error import SyncErrorRecord
 
 app = typer.Typer()
+factgrid_add_app = typer.Typer()
+app.add_typer(factgrid_add_app, name="add", help="Add data to FactGrid")
+
 console = Console()
 
 
@@ -48,28 +52,27 @@ def sync(
     date: Annotated[
         str | None,
         typer.Option(
-            help="Sync all entities that were modified at given date. Use iso-format to specify a date or 'today' or 'yesterday'"
+            help="Sync all entities that were modified at given date. Use iso-format to specify a date or 'today' or 'yesterday'",
         ),
     ] = None,
     dry_run: Annotated[
-        bool, typer.Option(help="Check how many Wikidata entities would be affected without adding the FactGrid id")
+        bool,
+        typer.Option(help="Check how many Wikidata entities would be affected without adding the FactGrid id"),
     ] = False,
     fix_known_issues: Annotated[
         bool,
         typer.Option(
-            help="Fix known entity issues to avoid mediawiki api errors. Fixes errors such as missing coordinate precision"
+            help="Fix known entity issues to avoid mediawiki api errors. Fixes errors such as missing coordinate precision",
         ),
     ] = False,
 ):
-    """
-    Sync Wikidata back references with FactGrid. Adds the FactGrid Qid to Items that are in FactGrid and linked to Wikidata
-    """
+    """Sync Wikidata back references with FactGrid. Adds the FactGrid Qid to Items that are in FactGrid and linked to Wikidata"""
     bot = Bot(Bot.load_auth())
     mappings = []
     if factgrid_entity:
         console.print(f"Starting sync for {factgrid_entity}")
         mappings = bot.factgrid.get_reverse_item_mapping_for(
-            {bot.factgrid.item_prefix.unicode_string() + factgrid_entity}
+            {bot.factgrid.item_prefix.unicode_string() + factgrid_entity},
         )
     elif wd_entity:
         console.print(f"Starting sync for {wd_entity}")
@@ -104,10 +107,10 @@ def sync(
             if failed_syncs:
                 console.print(SyncErrorRecord.convert_list_to_table(failed_syncs))
                 console.print(
-                    f"During the sync {len(failed_syncs)} items failed sync with Wikidata due to the errors listed in the table above"
+                    f"During the sync {len(failed_syncs)} items failed sync with Wikidata due to the errors listed in the table above",
                 )
                 console.print(
-                    "Try to run the sync with the option --fix-known-issues this can reduce the number of errors"
+                    "Try to run the sync with the option --fix-known-issues this can reduce the number of errors",
                 )
     else:
         console.print("Skipping sync step in dry_run mode")
@@ -115,10 +118,7 @@ def sync(
 
 @app.command()
 def init():
-    """
-    Setup the authorization for the bot. Must only be executed once.
-    """
-
+    """Set up the authorization for the bot. Must only be executed once."""
     factgrid_auth = wikibase_auth_dialog("FactGrid")
     console.print(factgrid_auth.password)
     wikidata_auth = wikibase_auth_dialog("Wikidata")
@@ -130,9 +130,66 @@ def init():
     Bot.store_auth(auth)
 
 
+@factgrid_add_app.command()
+def family_names(force: Annotated[bool, typer.Option(help="If not set the changes have to be confirmed")] = False):
+    """Add Wikidata ID to family names if a family name with the same name exists in Wikidata."""
+
+    def show_mapping_table(mappings):
+        table = Table(title="Family Names with missing Wikidata ID in FactGrid and same Name")
+
+        table.add_column(
+            "Family Name",
+            justify="left",
+            style="green",
+        )
+        table.add_column("Wikidata ID", justify="left", style="cyan", no_wrap=True)
+        table.add_column("FactGrid ID", justify="left", style="blue", no_wrap=True)
+        for row in mappings:
+            table.add_row(*row)
+        console.print(table)
+
+    bot = Bot(Bot.load_auth())
+    console.print(
+        "Querying FactGrid and Wikidata for family names with the same name and missing Wikidata ID in FactGrid",
+    )
+    label_mappings = bot.get_missing_family_name_mappings()
+    console.print(f"There exist {len(label_mappings)} family names in Wikidata with corresponding FactGrid Entry")
+    valid_mappings = [
+        (family_name, wd_ids[0], factgrid_ids[0])
+        for family_name, wd_ids, factgrid_ids in label_mappings
+        if len(factgrid_ids) == 1 or len(wd_ids) == 1
+    ]
+    # TODO add option to show errors
+    mappings_with_errors = [
+        (family_name, wd_ids, factgrid_ids)
+        for family_name, wd_ids, factgrid_ids in label_mappings
+        if len(factgrid_ids) > 1 or len(wd_ids) > 1
+    ]
+    console.print(
+        f"{len(valid_mappings)} family names can be added to FactGrid. (have no collision with multiple entries)",
+    )
+    show_table = not force or typer.confirm("Show valid family name mappings?")
+    if show_table:
+        show_mapping_table(valid_mappings)
+    add_wikidata_ids = force or typer.confirm("Are you sure you want to add the Wikidata Id to the FactGrid entities?")
+    if add_wikidata_ids:
+        with Progress() as progress:
+            total = len(valid_mappings)
+            task = progress.add_task("[green]Adding Wikidata IDs to FactGrid family names...", total=total)
+            fails = bot.add_wikidata_id_to_factgrid_family_name(
+                label_mappings=valid_mappings,
+                progress_callback=lambda: progress.advance(task, 1),
+            )
+            if fails:
+                show_mapping_table(fails)
+                console.print(f"Failed to add Wikidata ID for {len(fails)} FactGrid entities.")
+                console.print(
+                    "Common issue is that the Wikidata ID is already used by another FactGrid entity most likely a given name which links to a family name. ",
+                )
+
+
 def wikibase_auth_dialog(name: str) -> WikibaseAuthorizationConfig | None:
-    """
-    Dialog to select a Wikibase authorization configuration.
+    """Dialog to select a Wikibase authorization configuration.
     :return:
     """
     auth_type = typer.prompt(
